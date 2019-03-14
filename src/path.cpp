@@ -737,6 +737,33 @@ namespace {
 		return ret;
 	}
 
+	std::string lexically_relative(string_view base
+		, string_view target)
+	{
+		// strip common path elements
+		std::size_t last_separator = 0;
+		for (std::size_t i = 0; i < std::min(base.size(), target.size()); ++i)
+		{
+			if (base[i] != target[i]) break;
+			if (base[i] == TORRENT_SEPARATOR_CHAR) last_separator = i;
+		}
+
+		base = base.substr(last_separator + 1);
+		target = target.substr(last_separator + 1);
+
+		// count number of path elements left in base, and prepend that number of
+		// "../" to target
+
+		int const num_steps = static_cast<int>(std::count(
+			base.begin(), base.end(), TORRENT_SEPARATOR_CHAR));
+		std::string ret;
+		for (int i = 0; i < num_steps; ++i)
+			ret += ".." TORRENT_SEPARATOR;
+
+		ret += target.to_string();
+		return ret;
+	}
+
 	std::string current_working_directory()
 	{
 #if defined TORRENT_WINDOWS

@@ -605,4 +605,34 @@ TORRENT_TEST(unc_paths)
 	remove(reserved_name, ec);
 	TEST_CHECK(!ec);
 }
+
+TORRENT_TEST(relative_path)
+{
+#ifdef TORRENT_WINDOWS
+#define S "\\"
+#else
+#define S "/"
+#endif
+	TEST_EQUAL(lexically_relative("A" S "B" S "C"
+		, "A" S "C" S "B"), ".." S ".." S "C" S "B");
+
+	TEST_EQUAL(lexically_relative("A" S "B" S "C"
+		, "A" S "B" S "B"), ".." S "B");
+
+	TEST_EQUAL(lexically_relative("A" S "B" S "C"
+		, "A" S "B" S "C"), "");
+
+	TEST_EQUAL(lexically_relative("A" S "B"
+		, "A" S "B"), "");
+
+	TEST_EQUAL(lexically_relative("A" S "B"
+		, "A" S "B" S "C"), "C");
+
+	TEST_EQUAL(lexically_relative(""
+		, "A" S "B" S "C"), "A" S "B" S "C");
+
+	TEST_EQUAL(lexically_relative("A" S "B" S "C", "")
+		, ".." S ".." S "..");
+}
+
 #endif

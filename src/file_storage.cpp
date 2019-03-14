@@ -667,7 +667,7 @@ namespace {
 		TORRENT_ASSERT_PRECOND(index >= file_index_t(0) && index < end_file());
 		internal_file_entry const& fe = m_files[index];
 		TORRENT_ASSERT(fe.symlink_index < int(m_symlinks.size()));
-		return m_symlinks[file_index_t(fe.symlink_index)];
+		return m_symlinks[fe.symlink_index];
 	}
 
 	std::time_t file_storage::mtime(file_index_t const index) const
@@ -884,7 +884,7 @@ namespace {
 	std::string const& file_storage::symlink(internal_file_entry const& fe) const
 	{
 		TORRENT_ASSERT_PRECOND(fe.symlink_index < int(m_symlinks.size()));
-		return m_symlinks[file_index_t(fe.symlink_index)];
+		return m_symlinks[fe.symlink_index];
 	}
 
 	std::time_t file_storage::mtime(internal_file_entry const& fe) const
@@ -1115,6 +1115,83 @@ namespace {
 
 		if (index != cur_index) reorder_file(index, cur_index);
 	}
+
+	file_index_t file_storage::find_file(string_view file) const
+	{
+		for (auto const j : file_range())
+		{
+			if (file != file_path(j)) continue;
+			return j;
+		}
+		return file_index_t{-1};
+	}
+
+	bool file_storage::validate_symlinks()
+	{
+		bool ret = true;
+		for (auto const i : file_range())
+		{
+			if (!(file_flags(i) & file_storage::flag_symlink)) continue;
+
+			internal_file_entry const& fe = m_files[i];
+			TORRENT_ASSERT(fe.symlink_index < int(m_symlinks.size()));
+
+			// symlink targets are only allowed to point to files or directories in
+			// this torrent.
+			{
+				std::string target = symlink(i);
+
+				// if it points to a directory, that's OK
+				auto it = std::find(m_paths.begin(), m_paths.end(), target);
+				if (it != m_paths.end())
+				{
+					m_symlinks[fe.symlink_index] = combine_path(name(), *it);
+					continue;
+				}
+
+				target = combine_path(name(), target);
+
+				auto const idx = find_file(target);
+				if (idx != file_index_t{-1})
+				{
+					m_symlinks[fe.symlink_index] = file_path(idx);
+					continue;
+				}
+			}
+
+			// this symlink target points to a file that's not part of this torrent
+			// file structure. That's not allowed by the spec.
+
+			// for backwards compatibility, allow paths relative to the link as
+			// well
+			if (fe.path_index >= 0)
+			{
+				std::string target = m_paths[fe.path_index];
+				append_path(target, symlink(i));
+				// if it points to a directory, that's OK
+				auto it = std::find(m_paths.begin(), m_paths.end(), target);
+				if (it != m_paths.end())
+				{
+					m_symlinks[fe.symlink_index] = combine_path(name(), *it);
+					continue;
+				}
+
+				target = combine_path(name(), target);
+				auto const idx = find_file(target);
+				if (idx != file_index_t{-1})
+				{
+					m_symlinks[fe.symlink_index] = file_path(idx);
+					continue;
+				}
+			}
+
+			// this symlink is invalid, make it point to itself
+			m_symlinks[fe.symlink_index] = file_path(i);
+			ret = false;
+		}
+		return ret;
+	}
+
 
 namespace aux {
 

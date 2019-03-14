@@ -527,9 +527,12 @@ namespace libtorrent {
 		// offset to add to any pointers to make them point into the new buffer
 		void apply_pointer_offset(std::ptrdiff_t off);
 
+		bool validate_symlinks();
+
 	private:
 
 		file_index_t last_file() const noexcept;
+		file_index_t find_file(string_view file) const;
 
 		int get_or_add_path(string_view path);
 
@@ -566,7 +569,7 @@ namespace libtorrent {
 		// for files that are symlinks, the symlink
 		// path_index in the internal_file_entry indexes
 		// this vector of strings
-		aux::vector<std::string, file_index_t> m_symlinks;
+		std::vector<std::string> m_symlinks;
 
 		// the modification times of each file. This vector
 		// is empty if no file have a modification time.
