@@ -143,6 +143,7 @@ bool get_peers::invoke(observer_ptr o)
 	e["q"] = "get_peers";
 	a["info_hash"] = m_target.to_string();
 	if (m_noseeds) a["noseed"] = 1;
+	a["scrape"] = 1;
 
 	if (m_node.observer())
 	{
